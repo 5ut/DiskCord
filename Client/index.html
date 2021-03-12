@@ -1,0 +1,243 @@
+<html>
+	<head>
+		<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+		<script src="./DiskCord.js"></script>
+
+        <script src="https://cdn.jsdelivr.net/npm/web-streams-polyfill@2.0.2/dist/ponyfill.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/streamsaver@2.0.3/StreamSaver.min.js"></script>
+
+        <script>
+            //https://stackoverflow.com/questions/15900485/correct-way-to-convert-size-in-bytes-to-kb-mb-gb-in-javascript
+            function formatBytes(bytes, decimals = 2) {
+                if (bytes === 0) return '0 Bytes';
+
+                const k = 1024;
+                const dm = decimals < 0 ? 0 : decimals;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+            }
+        </script>
+
+        <style>
+            #stream, #buffer{
+                display:inline-block;
+            }
+        </style>
+	</head>
+	
+	<body>
+        <h3>Discord Video Host Example</h3> 
+        <div id="buffer">
+            <!-- Download and store locally example. -->
+            <button id="download">Start Download</button>
+            <span id="progress"></span><br>
+            <video width="600" height="450" controls autplay>
+                Your browser does not support the video tag.
+            </video>
+            <div>Buffered Video Example (Click "Start Download")</div>
+            <script>
+                $("document").ready(function(){
+                    $("#buffer #download").click(async function(){
+                        $(this)[0].disabled = true;
+                        let cors = new DiskCord();
+
+                        //Videos must be formatted to handle fragmented data
+                        await cors.open("https://cdn.discordapp.com/attachments/818649056875380736/819659202032828427/a.head");
+
+                        //Start progress updater
+                        var progInt = setInterval(function(){setProgress(cors.getProgress())}, 100);
+
+                        var url = await cors.getFileURLSync("bun-buff.mp4", "video/mp4");
+
+                        setProgress(cors.getProgress());
+
+                        clearInterval(progInt);
+
+                        var source = document.createElement('source');
+
+                        source.src = url;
+                        source.type = "video/mp4";
+
+                        $("#buffer video").append(source);
+                    });
+
+                    var setProgress = function(val){
+                        $("#progress").html("Downloaded: "+ val + "%");
+                    }
+                });
+            </script>
+        </div>
+        
+        <div id="stream">
+            <!-- Stream chunks example -->
+            <video width="600" height="450" controls autplay>
+                Your browser does not support the video tag.
+            </video>
+            <div>Streamed Video Example</div>
+            <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+            <script>
+                $("document").ready(async function(){
+                    let cors = new DiskCord();
+
+                    //Videos must be formatted to handle streamed videos
+                    await cors.open("https://cdn.discordapp.com/attachments/818649056875380736/819659202032828427/a.head");
+
+                    var $video = $("#stream video");
+                    var videoSrc = window.location.hash.replace("#","");
+                    if (Hls.isSupported()) {
+                        var header;
+                        //We override network calls. Instead, we call our data collection.
+                        var hls = new Hls({
+                            loader: function(){
+                                this.load = async function(context, config, callbacks){
+                                    var file = context.url.substring(context.url.lastIndexOf('/') + 1);
+                                    
+                                    var data;
+                                    if("rangeEnd" in context && "rangeStart" in context){
+                                        data = await cors.getFileSync(file, context.rangeStart, context.rangeEnd);
+                                    }else{
+                                        data = await cors.getFileSync(file);
+                                    }
+
+                                    //Handle error (callback error)
+                                    
+                                    if(context.responseType=="text"){
+                                        var enc = new TextDecoder("ascii");
+                                        data = enc.decode(data);
+                                    }
+                                    
+                                    callbacks.onSuccess({"url":context.url, "data": data}, {"trequest":1, "tfirst":1, "tload":1, "tloader":1, "bw":1, "total": 1}, context);
+                                };
+
+                                this.abort = async function(){
+                                    console.log("Abort request");
+                                };
+
+                                this.destroy = async function(){
+                                    console.log("Destory request");
+                                };
+                            }
+                        });
+                        
+                        hls.loadSource("prog_index.m3u8");
+                        hls.attachMedia($video[0]);
+                        hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                            video.play();
+                        });
+                    }
+                });
+            </script>
+        </div>
+
+        <hr>
+
+		<h3>Discord Image Host Example</h3> 
+		<script>
+			$("document").ready(async function(){
+				let cors = new DiskCord();
+
+				await cors.open("https://cdn.discordapp.com/attachments/818649056875380736/819792710272679957/a.head");// Meow
+				//await cors.open("https://cdn.discordapp.com/attachments/818649056875380736/819467608013013012/a.head");// Large image test (100mb)
+
+				cors.getFileList().forEach(file => {
+					$("#imglist").append($('<option value="'+file.name+'">'+file.name+'</option>'));
+				});
+				
+				$("#imglist").change(async function(){
+					var url = await cors.getFileURLSync($(this).val(), "image/jpg");
+
+					$("#imgframe").attr("src", url);
+				});
+				
+				$("#imglist").trigger("change");
+			});
+		</script>
+		<img height="500" id="imgframe" src=""/><br>
+		<select id="imglist">
+		</select>
+
+        <hr>
+
+        <h3>Discord File Download Example</h3> 
+
+        <select id="filelist">
+		</select>
+
+        <span>
+            <button id="download_blob">Download via Blob</button>*
+            <button id="download_stream">Download via Stream</button>
+        </span><br><br>
+
+        <i style="font-size:12px">* Blobs are much less clunky, but will require the item stored fully in memory</i>
+
+		<script>
+			$("document").ready(async function(){
+				let cors = new DiskCord();
+
+				await cors.open("https://cdn.discordapp.com/attachments/818649056875380736/819777703954874378/a.head");
+
+                let fileList = cors.getFileList();
+
+                fileList.forEach(function(file, i){
+					$("#filelist").append($('<option value="'+i+'">'+file.name+ " - " + formatBytes(file.size) + "</option>"));
+				});
+				
+				$("#download_blob").click(async function(){
+                    $(this)[0].disabled = true;
+
+                    let file = fileList[$("#filelist").val()];
+
+                    let url = await cors.getFileURLSync(file.name,"application/octet-stream");
+
+                    var a = document.createElement("a");
+                    a.href = url;
+                    a.setAttribute("download", file.name);
+                    a.click();
+
+                    $(this)[0].disabled = false;
+                });
+
+                $("#download_stream").click(async function(){
+                    //Handle manually cancelling download
+
+                    $(this)[0].disabled = true;
+
+                    let file = fileList[$("#filelist").val()];
+
+                    const fileStream = streamSaver.createWriteStream(file.name, {
+                        size: file.size, // (optional filesize) Will show progress
+                    });
+                    const writer = fileStream.getWriter();
+
+                    window.onunload = () => {
+                        fileStream.abort()
+                        writer.abort()
+                    }
+
+                    var downloadSize = 1024 * 1024 * 5;
+                    for(var i = 0;i<file.size;i+=downloadSize){
+                        var start = i;
+                        var end = i + downloadSize;
+
+                        if(end > file.size){
+                            end -= end - file.size;
+                        }
+
+                        let tmpChunk = await cors.getFileSync(file.name, start, end);
+
+                        writer.write(tmpChunk);
+                    }
+
+                    writer.close();
+
+                    $(this)[0].disabled = false;
+                    
+                });
+			});
+		</script>
+	</body>
+
+</html>
