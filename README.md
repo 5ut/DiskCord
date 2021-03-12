@@ -1,3 +1,4 @@
+![DiskCord logo.](https://cdn.discordapp.com/attachments/818649056875380736/819967196632580156/hard-drive-disk-icon.png "DiskCord logo.")
 # DiskCord
  Host files on external sites and use them for streaming, images, or data sharing without any CORS restriction.
  
