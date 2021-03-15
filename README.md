@@ -1,4 +1,4 @@
-![DiskCord logo.](https://cdn.discordapp.com/attachments/447707767000662017/821082870662561828/unknown.png "DiskCord logo.")
+![DiskCord logo.](https://media.discordapp.net/attachments/447707767000662017/821084108033491064/hard-drive-disk-icon2.png "DiskCord logo.")
 # DiskCord
  Upload files of any size on external sites as smaller arbitrarily sized chunks, and access the file reassembled in the browser without any CORS restriction.
  
