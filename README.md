@@ -6,11 +6,11 @@
  https://5ut.github.io/
  
 ## What it can be used for
- * Hosting files on external sites without restrictions
-    * Stream video
+ * Hosting files on external sites without restrictions and view them as:
+    * Streamed or BLOB video
     * Raw downloads (Stream or BLOB)
     * Large images
-    * Live stream data
+    * Live streamed data
  * Backup Data
  * Sharing files
 
