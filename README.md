@@ -1,6 +1,6 @@
-![DiskCord logo.](https://cdn.discordapp.com/attachments/818649056875380736/819967196632580156/hard-drive-disk-icon.png "DiskCord logo.")
+![DiskCord logo.](https://cdn.discordapp.com/attachments/447707767000662017/821082870662561828/unknown.png "DiskCord logo.")
 # DiskCord
- Host files on external sites and use them for streaming, images, or data sharing without any CORS restriction.
+ Upload files of any size on external sites as smaller arbitrarily sized chunks, and access the file reassembled in the browser without any CORS restriction.
  
 ## Examples
  https://5ut.github.io/
