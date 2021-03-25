@@ -2,6 +2,8 @@
 # DiskCord
  Upload files of any size on external sites as smaller arbitrarily sized chunks, and access the files reassembled in the browser without any CORS restriction.
  
+ **New**: Encryption using AES256
+ 
 ## Examples
  https://5ut.github.io/
  
