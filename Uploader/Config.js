@@ -23,7 +23,7 @@ config["DISCORD_FILE_MAX"] = 1024 * 1024 * 2;
 config["DISCORD_URL_PREFIX"] = "https://cdn.discordapp.com/attachments/" + config.DISCORD_CHANNELID + "/";
 
 /*Encryption*/
-config["ENCRYPTION_PASS"] = "password123"; // Ensure a strong passphrase
+config["ENCRYPTION_PASS"] = ""; // Ensure a strong passphrase
 config["ENCRYPT_CHUNKS"] = true; // Encryption requires the client script to be hosted in https
 config["ENCRYPT_HEADER"] = true; // ^^^^
 config["DECRYPTION_VERIFICATION_MSG"] = "DiskCord"; // Must match "decryptionVerifyMsg" in the client

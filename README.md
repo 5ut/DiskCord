@@ -5,7 +5,9 @@
  **New**: Encryption using AES256
  
 ## Examples
- https://5ut.github.io/
+ https://5ut.github.io/ 
+ 
+ *Check out the update*
  
 ## What it can be used for
  * Hosting files on external sites without restrictions and view them as:
