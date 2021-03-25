@@ -22,13 +22,12 @@ class Header{
         });
     }
 
-    addChunk(fileName, fileSize, origSize, compressed = false){
+    addChunk(fileName, fileSize, encrypted){
         this.#chunksCount++;
         this.#chunks[this.#chunksCount] = {
             name: fileName,
             size: fileSize,
-            compressed: compressed,
-            origSize: origSize,
+            encrypted: encrypted,
             url: ""
         };
         return this.#chunksCount;
@@ -42,20 +41,16 @@ class Header{
         this.#chunks[id].url = url;
     }
 
-    toObject(){
+    toJSON(){
         var retObj = {
             urlPrefix: this.#urlPrefix,
             docAliasVar: config.DOCUMENT_VAR_ALIAS,
             dataChunksVar: config.DATA_CHUNKS_VARIABLE,
             chunks: this.#chunks,
-            files: this.#files
+            files: this.#files,
         };
 
-        var retString = config.HEADER_VAR_ALIAS + "=" +
-        "\"" + Buffer.from(JSON.stringify(retObj)).toString("base64") + "\";" +
-        "window." + config.DOCUMENT_VAR_ALIAS + "=document;";
-
-        return retString;
+        return JSON.stringify(retObj);
     }
     
 }

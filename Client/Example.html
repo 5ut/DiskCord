@@ -3,6 +3,7 @@
 		<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 		<script src="./DiskCord.js"></script>
 
+        <!-- Used for streaming locally downloaded data. https://github.com/jimmywarting/StreamSaver.js/ -->
         <script src="https://cdn.jsdelivr.net/npm/web-streams-polyfill@2.0.2/dist/ponyfill.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/streamsaver@2.0.3/StreamSaver.min.js"></script>
 
@@ -135,6 +136,7 @@
         <hr>
 
 		<h3>Discord Image Host Example</h3> 
+        
 		<script>
 			$("document").ready(async function(){
 				let cors = new DiskCord();
@@ -155,7 +157,8 @@
 				$("#imglist").trigger("change");
 			});
 		</script>
-		<img height="500" id="imgframe" src=""/><br>
+
+		<img height="300" id="imgframe" src=""/><br>
 		<select id="imglist">
 		</select>
 
@@ -238,6 +241,48 @@
                 });
 			});
 		</script>
+
+        <hr>
+
+        <h3>Encryption Examples</h3>
+
+        <hr>
+
+        <div id="enc">
+            <!-- Downloads the encrypted html, then decrypts the loaded files -->
+            <div id="decryptForm">
+                <h6 id="msg"></h6>
+                <label>Password:</label><input id="password" type="text"/> <small>Enter: <i>password123 (please make sure your password is more secure than this)</i></small><br>
+                <button id="decrypt">Decrypt</button><br>
+                <script>
+                    if (location.protocol !== 'https:') {
+                        $("#decryptForm #decrypt")[0].disabled = true;
+                        $("#decryptForm").append("Decryption requires HTTPS, as per browser specs.");
+                    }else{
+                        $(document).ready(function(){
+                            $("#decrypt").click(async function(){
+                                //Store password globally for downloaded html to access
+                                //Not the best security practice, but neither is telling everyone the password
+                                document.ENC_PASS = $("#password").val();
+
+                                let cors = new DiskCord();
+
+				                await cors.open("https://cdn.discordapp.com/attachments/818649056875380736/824420100576116826/a.head", document.ENC_PASS);
+
+                                if(cors.decryptSuccess()){
+                                    let html = await cors.getFileSync("encrypted.html");
+
+                                    //Override all this
+                                    $("#enc").html((new TextDecoder()).decode(html));
+                                }else{
+                                    $("#decryptForm #msg").html("Invalid password");
+                                }
+                            });
+                        });
+                    }
+                </script>
+            </div>
+        </div>
 	</body>
 
 </html>

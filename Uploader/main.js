@@ -3,7 +3,7 @@ const Discord = require("./Discord");
 try{
     console.log("Starting...");
 
-    Discord.upload("./Build/Input/", false);
+    Discord.upload("./Build/Input/");
 
     console.log("Success.");
 }

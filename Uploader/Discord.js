@@ -4,11 +4,11 @@ const Generator = require("./Generator");
 const Discord = require('discord.js');
 const bot = new Discord.Client();
 
-async function uploader(fileName, compress){
+async function uploader(fileName){
 	try{
 		console.log("Parsing file...");
 
-		let fileGenInfo = Generator.writeChunks(fileName, Config.DISCORD_URL_PREFIX, Config.DISCORD_FILE_MAX, compress);
+		let fileGenInfo = await Generator.writeChunks(fileName, Config.DISCORD_URL_PREFIX, Config.DISCORD_FILE_MAX);
 		
 		console.log("Parsed and generated files.");
 
@@ -46,7 +46,7 @@ async function uploader(fileName, compress){
 			}
 
 			//Write header
-			let headerURL = Generator.writeHeader();
+			let headerURL = await Generator.writeHeader();
 
 			//Upload header and get URL
 			let uploadHeaderData = await channel.send({
@@ -70,6 +70,7 @@ async function uploader(fileName, compress){
 	}
 	catch(err){
 		bot.destroy();
+		console.log(err);
 		throw Error("Discord: " + err.name +  " - " + err.message);
 	}
 }

@@ -11,8 +11,9 @@
     * Raw downloads (Stream or BLOB)
     * Large images
     * Live streamed data
- * Backup Data
+ * Backup data
  * Sharing files
+ * Encrypting data online
 
 ## Features
 
@@ -20,7 +21,7 @@
  * Multiple file hosting from single reference
  * Modular - Write your own uploading module for your favorite site
  * Fully streamed uploading, no memory issues for large files
- * **Soon:** Compression & Encryption
+ * Encryption (AES256)
  * **Soon:** Live stream of data
  
 ## How it works

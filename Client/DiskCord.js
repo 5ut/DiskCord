@@ -1,21 +1,49 @@
 function DiskCord(){
+    const decryptionVerifyMsg = "DiskCord";
+
     var _header = null;
     var _varAlias = "HD";
     var _numChunks = 0;
     var _totalSize = 0;
+    var _key = new Uint8Array(0);
+
+    var _validDecrypt = false;
 
     var _currentDownloadProg = 0;
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////
     // Public 
 
-    this.open = async function(url){
+    this.open = async function(url, encPass = ""){
         if(url.length <= 0){
             return false;
         }
 
+        //Cannot use encryption/decryption in non-https environments 
+        if("subtle" in crypto){
+            const rawKey = await crypto.subtle.digest("SHA-256", (new TextEncoder()).encode(encPass));
+
+            _key = await window.crypto.subtle.importKey(
+                "raw",
+                rawKey,
+                "AES-CTR",
+                true,
+                ["decrypt"]
+            );
+        }
+        
+
         //Get header, parse it.
-        return setHeader(url);
+        try{
+            await setHeader(url);
+        }catch(err){
+            console.log(err);
+        }
+    }
+
+    //Is the decryption successful?
+    this.decryptSuccess = function(){
+        return _validDecrypt;
     }
 
     //Returns the requested file as a buffer. Sync
@@ -143,6 +171,17 @@ function DiskCord(){
         for(var i=startChunk;i<=endChunk;i++){
             var data = await download(_header.urlPrefix + _header.chunks[i].url);
 
+            //Decrypt data
+            if(_header.chunks[i].encrypted){
+                data = await crypto.subtle.decrypt({
+                    name: "AES-CTR",
+                    counter: new Uint8Array(16),
+                    length: 64
+                }, _key, data.buffer);
+
+                data = new Uint8Array(data);//For subarray
+            }
+
             _currentDownloadProg = (i/endChunk).toFixed(2)*100;//Set download percent
 
             if(startChunk == endChunk){
@@ -176,12 +215,12 @@ function DiskCord(){
     }
 
     //Returns the offset inside the chunk to reach that byte
-    var byteToChunkOffset = function(byte, chunk){
+    var byteToChunkOffset = function(byte){
         for(var i=1;i<_totalSize;i++){
-            byte -= _header.chunks[i].origSize;
+            byte -= _header.chunks[i].size;
 
             if(byte <= 0){
-                byte += _header.chunks[i].origSize;
+                byte += _header.chunks[i].size;
                 return byte;
             }
         }
@@ -193,7 +232,7 @@ function DiskCord(){
     var byteToChunk = function(bytePos){
         let curSize = 0;
         for(var i=1;i<_totalSize;i++){
-            curSize += _header.chunks[i].origSize;
+            curSize += _header.chunks[i].size;
 
             if(curSize >= bytePos){
                 return i;
@@ -205,32 +244,69 @@ function DiskCord(){
 
     //Downloads and sets the header
     var setHeader = async function(url){
-        try{
-            var data = await download(url);
+        var data = await download(url);
+        var dataOrig = data;
 
-            _header = JSON.parse(new TextDecoder().decode(data));
+        //Decrypt header, and verify
+        if(document[_varAlias + "_ENC"]){ 
+            //This is set to false if not encrypted, or not set if using an old header.
+            //Therefore it wont attempt to decrypt if not encrypted
 
-            _varAlias = _header.dataChunksVar;
-
-            //Count chunks
-            let count = 1;
-            while(count in _header.chunks){
-                _totalSize += _header.chunks[count].origSize;
-                count++;
+            //Check if encryption is available
+            if(!("subtle" in crypto)){
+                throw new Error("Decryption is not available in this browser");
             }
-            count--;
 
-            _numChunks = count;
+            //Attempt to decrypt the verification message first
+            let encryptVerifMsg = Uint8Array.from(atob(document[_varAlias + "_ENC"]), c => c.charCodeAt(0));
+            let decryptVerifMsg = await crypto.subtle.decrypt({
+                name: "AES-CTR",
+                counter: new Uint8Array(16),
+                length: 64
+            }, _key, encryptVerifMsg.buffer);
 
-        }catch(err){
-            console.log(err);
-            console.log("Failed to parse JSON for header. Invalid header?");
+            var verifMsg = (new TextDecoder()).decode(new Uint8Array(decryptVerifMsg));
+
+            try{
+                verifMsg = JSON.parse(verifMsg);
+
+                if(!("msg" in verifMsg) || verifMsg.msg != decryptionVerifyMsg){
+                    throw new Error("Invalid Password");
+                }
+            }catch(err){
+                return;//We don't throw error if it doesn't parse, since it is not an error. Just in invalid password.
+            }
+
+            //Decrypt data
+            if(verifMsg.headerEnc){
+                data = await crypto.subtle.decrypt({
+                    name: "AES-CTR",
+                    counter: new Uint8Array(16),
+                    length: 64
+                }, _key, data.buffer);
+            }
+
+            document[_varAlias + "_ENC"] = null;
         }
+
+        _validDecrypt = true; // If decryption is disabled, it'll still say its valid
+
+        _header = JSON.parse(new TextDecoder().decode(data));
+
+        _varAlias = _header.dataChunksVar;
+
+        //Count chunks
+        let count = 1;
+        while(count in _header.chunks){
+            _totalSize += _header.chunks[count].size;
+            count++;
+        }
+        count--;
+
+        _numChunks = count;
     }
 
     var download = function(url){
-        //TODO: Handle decompression
-
         //Clear previous script
         var script = document.querySelector("#fileLoader");
         if(script){
@@ -241,7 +317,7 @@ function DiskCord(){
         document[_varAlias] = "";
     
         return new Promise(function(resolve, reject){
-            var script = document.createElement('script');
+            var script = document.createElement("script");
             script.onload = function(){
                 var data = Uint8Array.from(atob(document[_varAlias]), c => c.charCodeAt(0));
                 document[_varAlias] = "";

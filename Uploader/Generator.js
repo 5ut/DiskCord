@@ -1,8 +1,10 @@
-var fs = require("fs-extra");
-var brotli = require('brotli');
+const fs =  require("fs-extra");
+const aesjs = require("aes-js");
+const crypto = require("crypto");
 const header = require("./Header");
 
 const Config = require("./Config");
+const config = require("./Config");
 
 /*
 * Generates the chunks and header to be uploaded. Does not handle uploading.
@@ -15,7 +17,10 @@ module.exports.writeHeader = writeHeader;
 //Start header
 var retHeader = null;
 
-function writeChunks(fileInput, urlPrefix, maxChunkSize = 0, compressChunks = false){
+//Generate encryption key
+const encKey = crypto.createHash("sha256").update(Config.ENCRYPTION_PASS).digest();
+
+async function writeChunks(fileInput, urlPrefix, maxChunkSize = 0){
     var retVal = {};
 
     //Do general checks
@@ -36,7 +41,7 @@ function writeChunks(fileInput, urlPrefix, maxChunkSize = 0, compressChunks = fa
 
     if (fs.existsSync(Config.TMP_CHUNKS_FOLDER)){
 		fs.emptyDirSync(Config.TMP_CHUNKS_FOLDER);
-    }else{   
+    }else{
         fs.mkdirSync(Config.TMP_CHUNKS_FOLDER);
     }
 
@@ -76,21 +81,16 @@ function writeChunks(fileInput, urlPrefix, maxChunkSize = 0, compressChunks = fa
         
         count++;
 
-        let fileName = Config.OUTPUT_PREFIX +Config.DATA_CHUNK_NAMES + count + Config.OUTPUT_SUFFIX;
+        let fileName = Config.OUTPUT_PREFIX + Config.DATA_CHUNK_NAMES + count + Config.OUTPUT_SUFFIX;
 
-        //Compress
-        let compressSuccess = false;
-        if(compressChunks){
-            let compRes = brotli.compress(dataBuffer, {
-                mode: 0,
-                quality: 11,
-                lgwin: 22
-            });
+        //Encrypt
+        let encryptionSuccess = false;
+        if(Config.ENCRYPT_CHUNKS){
 
-            if(compRes != null){
-                compressSuccess = true;
-                dataBuffer = compRes;
-            }
+            var aesCtr = new aesjs.ModeOfOperation.ctr(encKey, new Uint8Array(16));
+            dataBuffer = aesCtr.encrypt(dataBuffer);
+
+            encryptionSuccess = true;
         }
 
         //Writes the data as a base64 string (for client to use)
@@ -101,12 +101,12 @@ function writeChunks(fileInput, urlPrefix, maxChunkSize = 0, compressChunks = fa
         //Write out chunk and add to references
         fs.writeFileSync(Config.TMP_CHUNKS_FOLDER + fileName, fileString);
 
-        let id = retHeader.addChunk(fileName, dataBuffer.length, chunkOrigSize, compressSuccess);
+        let id = retHeader.addChunk(fileName, dataBuffer.length, encryptionSuccess);
 
         retVal[count] = {
             id: id,
             name: fileName,
-            compressed: compressSuccess,
+            encrypted: encryptionSuccess,
             url: Config.TMP_CHUNKS_FOLDER + fileName
         };
 
@@ -178,11 +178,41 @@ function setURL(fileID, url){
     retHeader.setUrlOfFile(fileID, url);
 }
 
-function writeHeader(){
+async function writeHeader(){
     if(retHeader == null){
         throw Error("Incomplete header. Cannot write.");
     }
 
-    fs.writeFileSync(Config.TMP_HEADER_FILE, retHeader.toObject());
+    //Get header JSON
+    let headerData = retHeader.toJSON();
+
+    //Encrypt header
+    let encryptedMsg = "false";
+    if(Config.ENCRYPT_HEADER){
+
+        var aesCtr = new aesjs.ModeOfOperation.ctr(encKey, new Uint8Array(16));
+        headerData = aesCtr.encrypt(aesjs.utils.utf8.toBytes(headerData));
+    }
+
+    //We also attach a encryption verification message if we have any encryption
+    if(Config.ENCRYPT_HEADER || Config.ENCRYPT_CHUNKS){
+        let verificationMsg = {
+            msg: Config.DECRYPTION_VERIFICATION_MSG,
+            headerEnc: Config.ENCRYPT_HEADER
+        }
+
+        aesCtr = new aesjs.ModeOfOperation.ctr(encKey, new Uint8Array(16));
+        encryptedMsg = "\"" + Buffer.from(aesCtr.encrypt(aesjs.utils.utf8.toBytes(JSON.stringify(verificationMsg)))).toString("base64")  + "\"";
+    }
+
+    headerData = Buffer.from(headerData).toString("base64");
+
+    //Creates the JS to execute
+    var headerString = config.HEADER_VAR_ALIAS + "_ENC=" + encryptedMsg + ";" + //Tells if encrypted
+        config.HEADER_VAR_ALIAS + "=" + "\"" + headerData + "\";" + //The actual data
+        "window." + config.DOCUMENT_VAR_ALIAS + "=document;"; //Gives "document" an alias (for saving some bytes)
+
+    fs.writeFileSync(Config.TMP_HEADER_FILE, headerString);
+    
     return Config.TMP_HEADER_FILE
 }
