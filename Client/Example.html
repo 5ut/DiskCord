@@ -1,11 +1,19 @@
 <html>
 	<head>
+		<title>DiskCord Example</title>
+	
 		<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 		<script src="./DiskCord.js"></script>
 
         <!-- Used for streaming locally downloaded data. https://github.com/jimmywarting/StreamSaver.js/ -->
         <script src="https://cdn.jsdelivr.net/npm/web-streams-polyfill@2.0.2/dist/ponyfill.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/streamsaver@2.0.3/StreamSaver.min.js"></script>
+		
+		<!--
+		Used for video streaming. We use HLS as it gives us control over the data, as opposed to MPEG-DASH
+		where we do not have control over the bytes once its linked on the page
+		-->
+		<script src="https://cdn.jsdelivr.net/npm/hls.js@0.14.17/dist/hls.min.js"></script>
 
         <script>
             //https://stackoverflow.com/questions/15900485/correct-way-to-convert-size-in-bytes-to-kb-mb-gb-in-javascript
@@ -78,7 +86,6 @@
                 Your browser does not support the video tag.
             </video>
             <div>Streamed Video Example</div>
-            <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
             <script>
                 $("document").ready(async function(){
                     let cors = new DiskCord();
